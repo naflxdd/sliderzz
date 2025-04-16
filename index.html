@@ -2,56 +2,122 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sliderzz</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
       color: white;
       text-align: center;
-      padding: 50px;
+      padding: 60px 20px;
     }
+
+    h1 {
+      font-size: 48px;
+      background: linear-gradient(90deg, #00c6ff, #0072ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 40px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.1);
+      padding: 30px;
+      border-radius: 20px;
+      display: inline-block;
+      min-width: 300px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+
     input, button {
-      padding: 10px;
-      margin: 10px;
+      width: 80%;
+      padding: 12px;
+      margin: 10px 0;
       border-radius: 10px;
       border: none;
       font-size: 16px;
     }
+
+    input {
+      background: rgba(255,255,255,0.2);
+      color: white;
+    }
+
+    input::placeholder {
+      color: #ddd;
+    }
+
     button {
       background-color: #00c6ff;
       color: white;
       cursor: pointer;
+      transition: 0.3s;
     }
-    .panel {
-      background: rgba(255,255,255,0.1);
-      padding: 20px;
-      border-radius: 20px;
-      display: inline-block;
+
+    button:hover {
+      background-color: #0072ff;
     }
+
     #successMsg, #loginMsg {
       margin-top: 10px;
       font-weight: bold;
+      min-height: 24px;
     }
-    #profileBtn {
-      margin-top: 20px;
+
+    #profileSection {
+      display: none;
+      margin-top: 40px;
+    }
+
+    #levelDisplay {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: rgba(0, 198, 255, 0.8);
+      padding: 10px 20px;
+      border-radius: 15px;
       font-size: 18px;
+      font-weight: bold;
+    }
+
+    #profileBtn {
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+
+    #gameArea {
+      display: none;
+      margin-top: 30px;
+      padding: 20px;
+      background-color: rgba(255,255,255,0.05);
+      border-radius: 15px;
     }
   </style>
 </head>
 <body>
   <h1>Sliderzz</h1>
-  <div class="panel">
+
+  <div class="panel" id="authPanel">
     <input type="text" id="username" placeholder="Kullanıcı adı" /><br />
     <input type="password" id="password" placeholder="Şifre" /><br />
-    <button onclick="register()">Kayıt Ol</button>
-    <button onclick="login()">Giriş Yap</button>
+    <button id="registerBtn">Kayıt Ol</button>
+    <button id="loginBtn">Giriş Yap</button>
+
     <div id="successMsg"></div>
     <div id="loginMsg"></div>
+  </div>
+
+  <div id="profileSection">
+    <div id="levelDisplay"></div>
     <div id="profileBtn"></div>
+    <button id="playBtn">▶️ Play</button>
+    <button id="friendsBtn">👥 Arkadaşlar</button>
+    <div id="gameArea">
+      <iframe id="gameFrame" src="" width="100%" height="500px" frameborder="0"></iframe>
+    </div>
   </div>
 
   <script>
@@ -69,11 +135,28 @@
 
     let currentUser = null;
 
+    document.getElementById("registerBtn").addEventListener("click", register);
+    document.getElementById("loginBtn").addEventListener("click", login);
+    document.getElementById("playBtn").addEventListener("click", () => {
+      document.getElementById("gameFrame").src = "game.html";
+      document.getElementById("gameArea").style.display = "block";
+    });
+
+    function showProfile(username, level) {
+      document.getElementById("authPanel").style.display = "none";
+      document.getElementById("profileSection").style.display = "block";
+      document.getElementById("profileBtn").textContent = "👤 " + username;
+      document.getElementById("levelDisplay").textContent = "Level: " + level;
+    }
+
     function register() {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const successMsg = document.getElementById("successMsg");
       const loginMsg = document.getElementById("loginMsg");
+
+      successMsg.textContent = "";
+      loginMsg.textContent = "";
 
       if (!username || !password) {
         successMsg.textContent = "⚠️ Lütfen kullanıcı adı ve şifre giriniz.";
@@ -85,12 +168,16 @@
           successMsg.textContent = "❌ Bu kullanıcı adı zaten alınmış.";
         } else {
           const userId = Date.now().toString();
-          db.ref("users/" + userId).set({ username, password });
-          db.ref("usersByUsername/" + username).set(userId);
-          currentUser = { uid: userId, username };
-          successMsg.textContent = "✅ Kayıt başarılı!";
-          loginMsg.textContent = "➡️ Şimdi giriş yapınız.";
+          db.ref("users/" + userId).set({ username, password, level: 1, friends: [] }).then(() => {
+            db.ref("usersByUsername/" + username).set(userId).then(() => {
+              currentUser = { uid: userId, username };
+              successMsg.textContent = "✅ Kayıt başarılı!";
+              loginMsg.textContent = "➡️ Şimdi giriş yapınız.";
+            });
+          });
         }
+      }).catch(error => {
+        successMsg.textContent = "⚠️ Hata oluştu: " + error.message;
       });
     }
 
@@ -98,6 +185,8 @@
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const loginMsg = document.getElementById("loginMsg");
+
+      loginMsg.textContent = "";
 
       if (!username || !password) {
         loginMsg.textContent = "⚠️ Kullanıcı adı ve şifre gerekli.";
@@ -114,12 +203,14 @@
             if (data.password === password) {
               currentUser = { uid, username };
               loginMsg.textContent = "✅ Giriş başarılı!";
-              document.getElementById("profileBtn").textContent = "👤 " + username;
+              showProfile(username, data.level);
             } else {
               loginMsg.textContent = "❌ Şifre yanlış.";
             }
           });
         }
+      }).catch(error => {
+        loginMsg.textContent = "⚠️ Hata oluştu: " + error.message;
       });
     }
   </script>
