@@ -1,584 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Online Yılan Oyunu</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #000; color: white; }
-        #loginScreen, #deathScreen { 
-            position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); 
-            text-align: center; 
-            background: rgba(0,0,0,0.8);
-            padding: 30px;
-            border-radius: 10px;
-            z-index: 100;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sliderzz</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+  <script>
+    // Firebase konfigürasyonu
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3WBbc3-CihYHOMpNckqVVn4tLP2jPWq0",
+      authDomain: "sliderzz-game.firebaseapp.com",
+      databaseURL: "https://sliderzz-game-default-rtdb.firebaseio.com",
+      projectId: "sliderzz-game",
+      storageBucket: "sliderzz-game.appspot.com",
+      messagingSenderId: "241003812199",
+      appId: "1:241003812199:web:2f671e60c9a731dcad505e"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    let user = null;
+    let level = 1;
+
+    auth.signInAnonymously().then((cred) => {
+      user = cred.user;
+      db.ref(`users/${user.uid}`).once("value").then(snapshot => {
+        if (!snapshot.exists()) {
+          db.ref(`users/${user.uid}`).set({ level: 1, friends: [] });
+        } else {
+          level = snapshot.val().level;
         }
-        canvas { display: block; }
-        #miniMap { 
-            position: absolute; 
-            bottom: 10px; right: 10px; 
-            border: 2px solid white;
-            background: rgba(0,0,0,0.5);
-            z-index: 50;
-        }
-        #scoreBoard {
-            position: absolute;
-            top: 10px; left: 10px;
-            background: rgba(0,0,0,0.7);
-            padding: 15px;
-            border-radius: 5px;
-            max-height: 80vh;
-            overflow-y: auto;
-            z-index: 50;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 10px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        input {
-            padding: 10px;
-            margin: 10px;
-            border: 2px solid #4CAF50;
-            border-radius: 5px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            font-size: 16px;
-            width: 200px;
-            text-align: center;
-        }
-        h1, h2 { color: #4CAF50; }
-    </style>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+        document.getElementById("levelDisplay").textContent = `Level ${level}`;
+      });
+    });
+
+    function increaseLevel() {
+      level++;
+      db.ref(`users/${user.uid}`).update({ level });
+      document.getElementById("levelDisplay").textContent = `Level ${level}`;
+    }
+
+    function addFriend() {
+      const friendId = prompt("Arkadaşının UID'sini gir:");
+      if (friendId) {
+        db.ref(`users/${user.uid}/friends`).push(friendId);
+        loadFriends();
+      }
+    }
+
+    function loadFriends() {
+      const list = document.getElementById("friendList");
+      list.innerHTML = "";
+      db.ref(`users/${user.uid}/friends`).once("value").then(snapshot => {
+        snapshot.forEach(child => {
+          const li = document.createElement("li");
+          li.textContent = child.val();
+          list.appendChild(li);
+        });
+      });
+    }
+  </script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    h1 {
+      font-size: 4rem;
+      margin-top: 1rem;
+      background: -webkit-linear-gradient(#ff416c, #ff4b2b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+    }
+    .panel {
+      background: rgba(255,255,255,0.1);
+      padding: 1rem 2rem;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+      margin: 1rem;
+      width: 300px;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 10px;
+      background: #ff4b2b;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #ff416c;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+  </style>
 </head>
 <body>
-    <div id="loginScreen">
-        <h1>Online Yılan Oyunu</h1>
-        <input type="text" id="playerName" placeholder="İsminizi girin" maxlength="15">
-        <button id="startButton">Oyuna Başla</button>
-    </div>
-    
-    <div id="deathScreen" style="display:none;">
-        <h2>Oyun Bitti!</h2>
-        <p>Skorunuz: <span id="finalScore">0</span></p>
-        <button id="restartButton">Tekrar Oyna</button>
-    </div>
-    
-    <canvas id="gameCanvas"></canvas>
-    <canvas id="miniMap"></canvas>
-    <div id="scoreBoard"></div>
-    
-    <script>
-    // Firebase konfigürasyonu - SİZİN BİLGİLERİNİZ
-    const firebaseConfig = {
-        apiKey: "AIzaSyBt3YYcZkBWwUCqb-hEY0uAl1ZRPB1kNLQ",
-        authDomain: "sliderzz-e4cfb.firebaseapp.com",
-        databaseURL: "https://sliderzz-e4cfb-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "sliderzz-e4cfb",
-        storageBucket: "sliderzz-e4cfb.firebasestorage.app",
-        messagingSenderId: "1096335063524",
-        appId: "1:1096335063524:web:bc6b53e68ddd576f76eff1"
-    };
-    
-    // Firebase başlat
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    
-    // Oyun elementlerini seç
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const miniMap = document.getElementById("miniMap");
-    const miniMapCtx = miniMap.getContext("2d");
-    const loginScreen = document.getElementById("loginScreen");
-    const playerNameInput = document.getElementById("playerName");
-    const startButton = document.getElementById("startButton");
-    const scoreBoard = document.getElementById("scoreBoard");
-    const deathScreen = document.getElementById("deathScreen");
-    const finalScoreDisplay = document.getElementById("finalScore");
-
-    // Oyun ayarları
-    const WORLD_SIZE = 5000;
-    const INITIAL_FOOD_COUNT = 500;
-    const MIN_LENGTH_FOR_BOOST = 10;
-    const BORDER_COLOR = "#ff0000";
-    let gameStarted = false;
-    let mouseX = canvas.width/2, mouseY = canvas.height/2;
-    let walls = [];
-    let foods = [];
-    let onlinePlayers = {};
-    let myPlayerId = null;
-    let animationId = null;
-    let isSpacePressed = false;
-    let foodSpawnTimer = 0;
-    let lastFrameTime = 0;
-
-    // Oyuncu ayarları
-    const player = {
-        name: "",
-        x: WORLD_SIZE / 2,
-        y: WORLD_SIZE / 2,
-        size: 15,
-        speed: 3,
-        boostSpeed: 6,
-        angle: 0,
-        segments: [],
-        length: 5,
-        color: `hsl(${Math.random() * 360}, 100%, 50%)`,
-        score: 0,
-        isAlive: true,
-        update: function() {
-            if (!this.isAlive) return;
-            
-            const canBoost = this.length >= MIN_LENGTH_FOR_BOOST;
-            const currentSpeed = (isSpacePressed && canBoost) ? this.boostSpeed : this.speed;
-            
-            if (isSpacePressed && canBoost) {
-                this.length = Math.max(3, this.length - 0.2);
-            }
-            
-            this.angle = Math.atan2(mouseY - canvas.height/2, mouseX - canvas.width/2);
-            this.x += Math.cos(this.angle) * currentSpeed;
-            this.y += Math.sin(this.angle) * currentSpeed;
-            
-            // Harita sınır kontrolü
-            if (this.x < this.size || this.x > WORLD_SIZE-this.size || 
-                this.y < this.size || this.y > WORLD_SIZE-this.size) {
-                this.die();
-                return;
-            }
-            
-            // Yılan gövdesini güncelle
-            this.segments.unshift({x: this.x, y: this.y, angle: this.angle});
-            while (this.segments.length > this.length * 3) {
-                this.segments.pop();
-            }
-        },
-        die: function() {
-            this.isAlive = false;
-            gameOver();
-        }
-    };
-
-    // Canvas boyutları
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        miniMap.width = 300;
-        miniMap.height = 300;
-    }
-    resizeCanvas();
-
-    // Online oyuncu ekleme/güncelleme
-    function updateOnlinePlayer() {
-        if (!player.isAlive || !myPlayerId) return;
-        
-        database.ref('players/' + myPlayerId).set({
-            x: player.x,
-            y: player.y,
-            angle: player.angle,
-            size: player.size,
-            length: player.length,
-            color: player.color,
-            name: player.name,
-            score: player.score,
-            isAlive: player.isAlive,
-            lastUpdate: firebase.database.ServerValue.TIMESTAMP
-        });
-    }
-
-    // Online oyuncuları dinle
-    function listenToOnlinePlayers() {
-        database.ref('players').on('value', (snapshot) => {
-            const players = snapshot.val() || {};
-            
-            // Kendi oyuncumuzu hariç tut
-            if (myPlayerId && players[myPlayerId]) {
-                delete players[myPlayerId];
-            }
-            
-            // 30 saniyedir güncelleme yapmayanları temizle
-            const now = Date.now();
-            Object.keys(players).forEach(id => {
-                if (now - (players[id].lastUpdate || 0) > 30000) {
-                    delete players[id];
-                }
-            });
-            
-            onlinePlayers = players;
-        });
-    }
-
-    // Oyun başlatma fonksiyonu
-    function startGame() {
-        const name = playerNameInput.value.trim();
-        if (!name) {
-            alert("Lütfen bir isim girin!");
-            return;
-        }
-        
-        // Oyun durumunu sıfırla
-        if (animationId) cancelAnimationFrame(animationId);
-        foods = [];
-        walls = [];
-        onlinePlayers = {};
-        
-        // Oyuncu ayarlarını sıfırla
-        player.name = name;
-        player.x = WORLD_SIZE / 2;
-        player.y = WORLD_SIZE / 2;
-        player.segments = [];
-        player.length = 5;
-        player.score = 0;
-        player.isAlive = true;
-        player.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        
-        // Online ID oluştur
-        myPlayerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-        
-        // UI ayarları
-        loginScreen.style.display = "none";
-        deathScreen.style.display = "none";
-        miniMap.style.display = "block";
-        scoreBoard.style.display = "block";
-        gameStarted = true;
-        foodSpawnTimer = 0;
-        lastFrameTime = performance.now();
-        
-        // Oyun nesnelerini oluştur
-        generateWalls();
-        createFood(INITIAL_FOOD_COUNT);
-        listenToOnlinePlayers();
-        updateScoreBoard();
-        
-        // Oyun döngüsünü başlat
-        gameLoop();
-    }
-
-    // Oyun döngüsü
-    function gameLoop(timestamp) {
-        if (!gameStarted) return;
-        
-        const deltaTime = timestamp - lastFrameTime;
-        lastFrameTime = timestamp;
-        
-        // Temizle
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Oyun güncellemeleri
-        if (player.isAlive) {
-            player.update();
-            checkFoodCollision();
-            updateOnlinePlayer();
-            
-            // Her 30 saniyede bir ek yem spawn et
-            foodSpawnTimer += deltaTime;
-            if (foodSpawnTimer > 30000) {
-                createFood(100);
-                foodSpawnTimer = 0;
-            }
-        }
-        
-        // Çizimler
-        drawWorld();
-        if (player.isAlive) drawPlayer();
-        drawOnlinePlayers();
-        drawMiniMap();
-        updateScoreBoard();
-        
-        // Sonraki frame
-        animationId = requestAnimationFrame(gameLoop);
-    }
-
-    // Online oyuncuları çiz
-    function drawOnlinePlayers() {
-        Object.values(onlinePlayers).forEach(onlinePlayer => {
-            if (!onlinePlayer.isAlive) return;
-            
-            ctx.save();
-            ctx.translate(onlinePlayer.x - player.x + canvas.width/2, 
-                         onlinePlayer.y - player.y + canvas.height/2);
-            ctx.rotate(onlinePlayer.angle);
-            
-            // Gövde
-            ctx.fillStyle = onlinePlayer.color;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(-onlinePlayer.length * 3, -onlinePlayer.size/2);
-            ctx.lineTo(-onlinePlayer.length * 3, onlinePlayer.size/2);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Baş
-            ctx.beginPath();
-            ctx.arc(0, 0, onlinePlayer.size, 0, Math.PI*2);
-            ctx.fillStyle = onlinePlayer.color;
-            ctx.fill();
-            
-            // İsim
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 16px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(onlinePlayer.name, 0, -onlinePlayer.size - 10);
-            
-            ctx.restore();
-        });
-    }
-
-    // Yem çarpışma kontrolü (3x etkili)
-    function checkFoodCollision() {
-        for (let i = foods.length-1; i >= 0; i--) {
-            const food = foods[i];
-            const dist = Math.sqrt(Math.pow(player.x - food.x, 2) + Math.pow(player.y - food.y, 2));
-            
-            if (dist < player.size + food.size) {
-                player.score += 30; // 3 kat skor
-                player.length += 3; // 3 kat uzunluk
-                foods.splice(i, 1);
-            }
-        }
-    }
-
-    // Dünya çizimi
-    function drawWorld() {
-        // Arkaplan
-        ctx.fillStyle = "#111";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Harita sınır çerçevesi
-        ctx.strokeStyle = BORDER_COLOR;
-        ctx.lineWidth = 5;
-        ctx.strokeRect(
-            -player.x + canvas.width/2, 
-            -player.y + canvas.height/2, 
-            WORLD_SIZE, 
-            WORLD_SIZE
-        );
-        
-        // Duvarlar
-        ctx.fillStyle = "#333";
-        walls.forEach(wall => {
-            ctx.fillRect(wall.x - player.x + canvas.width/2, 
-                        wall.y - player.y + canvas.height/2, 
-                        wall.width, wall.height);
-        });
-        
-        // Yemler
-        foods.forEach(food => {
-            ctx.beginPath();
-            ctx.arc(food.x - player.x + canvas.width/2, 
-                    food.y - player.y + canvas.height/2, 
-                    food.size, 0, Math.PI*2);
-            ctx.fillStyle = food.color;
-            ctx.fill();
-        });
-    }
-
-    // Oyuncu çizimi
-    function drawPlayer() {
-        ctx.save();
-        ctx.translate(canvas.width/2, canvas.height/2);
-        ctx.rotate(player.angle);
-        
-        // Gövde
-        ctx.fillStyle = player.color;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-player.length * 3, -player.size/2);
-        ctx.lineTo(-player.length * 3, player.size/2);
-        ctx.closePath();
-        ctx.fill();
-        
-        // Baş
-        ctx.beginPath();
-        ctx.arc(0, 0, player.size, 0, Math.PI*2);
-        ctx.fillStyle = player.color;
-        ctx.fill();
-        
-        // İsim
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 16px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(player.name, 0, -player.size - 10);
-        
-        // Boost efekti
-        if (isSpacePressed && player.length >= MIN_LENGTH_FOR_BOOST) {
-            ctx.beginPath();
-            ctx.arc(0, 0, player.size * 1.5, 0, Math.PI*2);
-            ctx.fillStyle = "#ffffff30";
-            ctx.fill();
-        }
-        
-        ctx.restore();
-    }
-
-    // Mini harita çizimi
-    function drawMiniMap() {
-        const scale = miniMap.width / WORLD_SIZE;
-        
-        // Arkaplan
-        miniMapCtx.fillStyle = "rgba(0, 0, 0, 0.7)";
-        miniMapCtx.fillRect(0, 0, miniMap.width, miniMap.height);
-        
-        // Harita sınırı
-        miniMapCtx.strokeStyle = BORDER_COLOR;
-        miniMapCtx.lineWidth = 2;
-        miniMapCtx.strokeRect(0, 0, miniMap.width, miniMap.height);
-        
-        // Duvarlar
-        miniMapCtx.fillStyle = "#555";
-        walls.forEach(wall => {
-            miniMapCtx.fillRect(wall.x * scale, wall.y * scale, wall.width * scale, wall.height * scale);
-        });
-        
-        // Yemler
-        for (let i = 0; i < foods.length; i += 10) {
-            const food = foods[i];
-            miniMapCtx.beginPath();
-            miniMapCtx.arc(food.x * scale, food.y * scale, 1, 0, Math.PI*2);
-            miniMapCtx.fillStyle = food.color;
-            miniMapCtx.fill();
-        }
-        
-        // Oyuncu
-        miniMapCtx.fillStyle = player.color;
-        miniMapCtx.beginPath();
-        miniMapCtx.arc(player.x * scale, player.y * scale, 3, 0, Math.PI*2);
-        miniMapCtx.fill();
-        
-        // Online oyuncular
-        Object.values(onlinePlayers).forEach(onlinePlayer => {
-            miniMapCtx.fillStyle = onlinePlayer.color;
-            miniMapCtx.beginPath();
-            miniMapCtx.arc(onlinePlayer.x * scale, onlinePlayer.y * scale, 2, 0, Math.PI*2);
-            miniMapCtx.fill();
-        });
-    }
-
-    // Skor tahtasını güncelle
-    function updateScoreBoard() {
-        const canBoost = player.length >= MIN_LENGTH_FOR_BOOST;
-        let onlinePlayersList = Object.values(onlinePlayers)
-            .sort((a, b) => b.score - a.score)
-            .map(p => `${p.name}: ${p.score}`)
-            .join('<br>');
-        
-        scoreBoard.innerHTML = `
-            <div style="margin-bottom:10px;">
-                <strong>${player.name}</strong><br>
-                Skor: ${player.score}<br>
-                Uzunluk: ${Math.floor(player.length)}
-            </div>
-            <div style="color:#aaa;">
-                <strong>ONLINE OYUNCULAR</strong><br>
-                ${onlinePlayersList || "Henüz başka oyuncu yok"}
-            </div>
-            ${isSpacePressed ? 
-              (canBoost ? 
-               '<div style="color:lightgreen;margin-top:10px;">BOOST AKTİF</div>' : 
-               '<div style="color:red;margin-top:10px;">BOOST İÇİN UZUNLUK YETERSİZ</div>') : 
-              ''}
-        `;
-    }
-
-    // Oyun bittiğinde online durumu güncelle
-    function gameOver() {
-        gameStarted = false;
-        if (animationId) cancelAnimationFrame(animationId);
-        finalScoreDisplay.textContent = player.score;
-        
-        // Online durumu güncelle
-        if (myPlayerId) {
-            database.ref('players/' + myPlayerId).remove();
-        }
-        
-        // Tüm nesneleri temizle
-        foods = [];
-        player.segments = [];
-        
-        // Ölüm ekranını göster
-        deathScreen.style.display = "block";
-        miniMap.style.display = "none";
-        scoreBoard.style.display = "none";
-    }
-
-    // Duvarları oluştur
-    function generateWalls() {
-        walls = [
-            {x: 800, y: 800, width: 300, height: 40},
-            {x: 800, y: 800, width: 40, height: 400},
-            {x: 1500, y: 1200, width: 400, height: 40},
-            {x: 1800, y: 900, width: 40, height: 350},
-        ];
-    }
-
-    // Yem oluştur
-    function createFood(count) {
-        for (let i = 0; i < count; i++) {
-            let x, y, valid;
-            do {
-                valid = true;
-                x = Math.random() * WORLD_SIZE;
-                y = Math.random() * WORLD_SIZE;
-                
-                for (const wall of walls) {
-                    if (x > wall.x - 30 && x < wall.x + wall.width + 30 &&
-                        y > wall.y - 30 && y < wall.y + wall.height + 30) {
-                        valid = false;
-                        break;
-                    }
-                }
-            } while (!valid);
-            
-            foods.push({
-                x: x,
-                y: y,
-                size: 8,
-                color: `hsl(${Math.random() * 360}, 100%, 50%)`
-            });
-        }
-    }
-
-    // Event listeners
-    startButton.addEventListener("click", startGame);
-    document.getElementById("restartButton").addEventListener("click", () => {
-        deathScreen.style.display = "none";
-        startGame();
-    });
-    playerNameInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") startGame();
-    });
-
-    window.addEventListener("mousemove", (e) => {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-    });
-
-    window.addEventListener("keydown", (e) => {
-        if (e.code === "Space") {
-            isSpacePressed = true;
-            e.preventDefault();
-        }
-    });
-
-    window.addEventListener("keyup", (e) => {
-        if (e.code === "Space") {
-            isSpacePressed = false;
-        }
-    });
-
-    window.addEventListener("resize", resizeCanvas);
-
-    // İlk yükleme
-    miniMap.style.display = "none";
-    scoreBoard.style.display = "none";
-    deathScreen.style.display = "none";
-    </script>
+  <h1>Sliderzz</h1>
+  <div class="panel">
+    <div id="levelDisplay">Level 1</div>
+    <button onclick="increaseLevel()">Level Up</button>
+  </div>
+  <div class="panel">
+    <h3>Arkadaş Listesi</h3>
+    <ul id="friendList"></ul>
+    <button onclick="addFriend()">Arkadaş Ekle</button>
+  </div>
 </body>
 </html>
