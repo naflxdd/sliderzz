@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Sliderzz - Oyun</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      background: #222;
+      border: 2px solid #00c6ff;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="500" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const box = 25;
+    let snake = [{ x: 5 * box, y: 5 * box }];
+    let direction = "RIGHT";
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
+      else if (e.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
+      else if (e.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
+      else if (e.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
+    });
+
+    const food = {
+      x: Math.floor(Math.random() * 20) * box,
+      y: Math.floor(Math.random() * 20) * box,
+    };
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "#00c6ff" : "#0072ff";
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      ctx.fillStyle = "#ff4757";
+      ctx.fillRect(food.x, food.y, box, box);
+
+      let head = { x: snake[0].x, y: snake[0].y };
+
+      if (direction === "LEFT") head.x -= box;
+      if (direction === "RIGHT") head.x += box;
+      if (direction === "UP") head.y -= box;
+      if (direction === "DOWN") head.y += box;
+
+      if (
+        head.x < 0 || head.x >= canvas.width ||
+        head.y < 0 || head.y >= canvas.height ||
+        snake.some((segment, index) => index !== 0 && segment.x === head.x && segment.y === head.y)
+      ) {
+        clearInterval(game);
+        alert("💀 Oyun Bitti!");
+        location.reload();
+      }
+
+      if (head.x === food.x && head.y === food.y) {
+        food.x = Math.floor(Math.random() * 20) * box;
+        food.y = Math.floor(Math.random() * 20) * box;
+      } else {
+        snake.pop();
+      }
+
+      snake.unshift(head);
+    }
+
+    const game = setInterval(draw, 150);
+  </script>
+</body>
+</html>
